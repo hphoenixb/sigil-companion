@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sigil Companion</title>
+<style>
+  /* ---- palette + base ---- */
+  :root {
+    --bg: #0b0a12;
+    --panel: #14121f;
+    --edge: #2b2740;
+    --ink: #ece6d8;      /* parchment text */
+    --muted: #8f88a8;
+    --gold: #c9a24b;
+    --gold-soft: #e6c874;
+    --violet: #7c6cf0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(1200px 700px at 50% -10%, #1a1730 0%, var(--bg) 60%);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px 64px;
+  }
+  .wrap { width: 100%; max-width: 860px; }
+  header { text-align: center; margin-bottom: 28px; }
+  h1 {
+    font-size: 30px; letter-spacing: 4px; margin: 0 0 6px;
+    font-weight: 600;
+    background: linear-gradient(90deg, var(--gold), var(--gold-soft), var(--gold));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  header p { color: var(--muted); margin: 0; font-size: 14px; letter-spacing: .5px; }
+
+  .panel {
+    background: linear-gradient(180deg, var(--panel), #100e1a);
+    border: 1px solid var(--edge);
+    border-radius: 14px;
+    padding: 22px;
+    margin-bottom: 22px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.45);
+  }
+  .step-label {
+    font-size: 12px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 12px;
+  }
+  textarea {
+    width: 100%; min-height: 74px; resize: vertical;
+    background: #0d0b16; color: var(--ink);
+    border: 1px solid var(--edge); border-radius: 10px;
+    padding: 12px 14px; font-size: 16px; font-family: inherit;
+    outline: none;
+  }
+  textarea:focus { border-color: var(--violet); }
+
+  button {
+    font-family: inherit; cursor: pointer;
+    background: transparent; color: var(--ink);
+    border: 1px solid var(--edge); border-radius: 9px;
+    padding: 9px 16px; font-size: 14px; letter-spacing: .5px;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  button:hover { border-color: var(--gold); color: var(--gold-soft); }
+  button.primary {
+    border-color: var(--gold); color: var(--gold-soft);
+    background: rgba(201,162,75,.08);
+  }
+  button.primary:hover { background: rgba(201,162,75,.16); }
+
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+
+  /* ---- distilled letters (reference only) ---- */
+  .letters {
+    margin-top: 16px; min-height: 58px;
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  }
+  .glyph-letter {
+    font-size: 30px; letter-spacing: 2px; color: var(--gold-soft);
+    border: 1px solid var(--edge); border-radius: 8px;
+    padding: 4px 12px; background: #0d0b16;
+  }
+  .hint { color: var(--muted); font-size: 13px; font-style: italic; }
+
+  /* ---- canvas ---- */
+  .canvas-tools { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .canvas-tools label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  input[type="range"] { accent-color: var(--violet); }
+  input[type="color"] {
+    width: 34px; height: 30px; padding: 0; border: 1px solid var(--edge);
+    border-radius: 6px; background: none; cursor: pointer;
+  }
+  .canvas-frame {
+    border: 1px solid var(--edge); border-radius: 12px; overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(124,108,240,.06), transparent 70%),
+      #08070f;
+  }
+  canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: crosshair; }
+
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 8px; line-height: 1.6; }
+  footer strong { color: var(--gold); font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>SIGIL COMPANION</h1>
+      <p>It distills your words and holds the canvas. The sigil is yours to make.</p>
+    </header>
+
+    <!-- STEP 1: intent -->
+    <section class="panel">
+      <div class="step-label">I · Statement of Intent</div>
+      <textarea id="intent" placeholder="Write your intent, e.g. IT IS MY WILL TO..."></textarea>
+      <div class="row">
+        <button class="primary" id="distillBtn">Distill letters</button>
+        <button id="clearIntentBtn">Clear</button>
+        <span class="hint" id="intentHint"></span>
+      </div>
+    </section>
+
+    <!-- STEP 2: distilled letters (reference only) -->
+    <section class="panel">
+      <div class="step-label">II · Your Letters &nbsp;<span style="color:var(--muted);text-transform:none;letter-spacing:0;">(vowels &amp; repeats removed)</span></div>
+      <div class="letters" id="letters">
+        <span class="hint">Distill an intent above and your working letters appear here — as reference. You compose the glyph yourself.</span>
+      </div>
+    </section>
+
+    <!-- STEP 3: draw -->
+    <section class="panel">
+      <div class="step-label">III · Draw Your Sigil</div>
+      <div class="canvas-tools">
+        <label>Stroke
+          <input type="range" id="size" min="1" max="24" value="4" />
+        </label>
+        <label>Ink
+          <input type="color" id="color" value="#e6c874" />
+        </label>
+        <button id="undoBtn">Undo</button>
+        <button id="clearCanvasBtn">Clear canvas</button>
+        <button class="primary" id="saveBtn">Save sigil</button>
+      </div>
+      <div class="canvas-frame">
+        <canvas id="board" width="820" height="520"></canvas>
+      </div>
+    </section>
+
+    <footer>
+      <strong>Nothing here draws for you.</strong> The letters are only a reference; every mark on the canvas is your own hand.
+    </footer>
+  </div>
+
+<script>
+/* ============================================================
+   PART 1 — Distilling the intent into working letters.
+   Chaos-magic style: keep letters only, remove vowels,
+   then remove repeats (keep first occurrence).
+   ============================================================ */
+const VOWELS = new Set(["A", "E", "I", "O", "U"]);
+
+function distill(text) {
+  const upper = text.toUpperCase();
+  const seen = new Set();
+  const result = [];
+  for (const ch of upper) {
+    if (ch < "A" || ch > "Z") continue;   // keep A–Z only (drops spaces, punctuation, digits)
+    if (VOWELS.has(ch)) continue;          // remove vowels
+    if (seen.has(ch)) continue;            // remove repeats
+    seen.add(ch);
+    result.push(ch);
+  }
+  return result;
+}
+
+const intentEl = document.getElementById("intent");
+const lettersEl = document.getElementById("letters");
+const intentHint = document.getElementById("intentHint");
+
+function renderLetters() {
+  const letters = distill(intentEl.value);
+  lettersEl.innerHTML = "";
+  if (letters.length === 0) {
+    lettersEl.innerHTML = '<span class="hint">No working letters yet — write an intent above.</span>';
+    intentHint.textContent = "";
+    return;
+  }
+  for (const L of letters) {
+    const span = document.createElement("span");
+    span.className = "glyph-letter";
+    span.textContent = L;
+    lettersEl.appendChild(span);
+  }
+  intentHint.textContent = letters.length + " letters to work from.";
+}
+
+document.getElementById("distillBtn").addEventListener("click", renderLetters);
+document.getElementById("clearIntentBtn").addEventListener("click", () => {
+  intentEl.value = "";
+  renderLetters();
+});
+
+/* ============================================================
+   PART 2 — The drawing canvas.
+   We store each stroke as a list of points so Undo / Clear
+   can redraw cleanly, and Save exports exactly what you drew.
+   ============================================================ */
+const canvas = document.getElementById("board");
+const ctx = canvas.getContext("2d");
+
+let strokes = [];        // completed strokes: [{color, size, points:[{x,y}]}]
+let current = null;      // the stroke being drawn right now
+let drawing = false;
+
+const sizeEl = document.getElementById("size");
+const colorEl = document.getElementById("color");
+
+// Convert a mouse/touch event into canvas coordinates.
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const point = e.touches ? e.touches[0] : e;
+  return {
+    x: (point.clientX - rect.left) * scaleX,
+    y: (point.clientY - rect.top) * scaleY,
+  };
+}
+
+function startStroke(e) {
+  e.preventDefault();
+  drawing = true;
+  current = { color: colorEl.value, size: Number(sizeEl.value), points: [getPos(e)] };
+}
+function moveStroke(e) {
+  if (!drawing) return;
+  e.preventDefault();
+  current.points.push(getPos(e));
+  redraw();
+}
+function endStroke() {
+  if (!drawing) return;
+  drawing = false;
+  if (current && current.points.length) strokes.push(current);
+  current = null;
+}
+
+// Redraw the whole canvas from stored strokes.
+function redraw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const all = current ? strokes.concat([current]) : strokes;
+  for (const s of all) {
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = s.size;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    s.points.forEach((p, i) => {
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    // draw a dot for a single click too
+    if (s.points.length === 1) {
+      ctx.arc(s.points[0].x, s.points[0].y, s.size / 2, 0, Math.PI * 2);
+      ctx.fillStyle = s.color;
+      ctx.fill();
+    }
+    ctx.stroke();
+  }
+}
+
+// Mouse
+canvas.addEventListener("mousedown", startStroke);
+canvas.addEventListener("mousemove", moveStroke);
+window.addEventListener("mouseup", endStroke);
+// Touch / stylus
+canvas.addEventListener("touchstart", startStroke, { passive: false });
+canvas.addEventListener("touchmove", moveStroke, { passive: false });
+canvas.addEventListener("touchend", endStroke);
+
+document.getElementById("undoBtn").addEventListener("click", () => {
+  strokes.pop();
+  redraw();
+});
+document.getElementById("clearCanvasBtn").addEventListener("click", () => {
+  strokes = [];
+  redraw();
+});
+
+// Save: flatten onto the dark background so the exported PNG isn't transparent.
+document.getElementById("saveBtn").addEventListener("click", () => {
+  const out = document.createElement("canvas");
+  out.width = canvas.width;
+  out.height = canvas.height;
+  const octx = out.getContext("2d");
+  octx.fillStyle = "#08070f";
+  octx.fillRect(0, 0, out.width, out.height);
+  octx.drawImage(canvas, 0, 0);
+
+  const link = document.createElement("a");
+  const stamp = new Date().toISOString().slice(0, 10);
+  link.download = "sigil-" + stamp + ".png";
+  link.href = out.toDataURL("image/png");
+  link.click();
+});
+
+// initial paint
+renderLetters();
+redraw();
+</script>
+</body>
+</html>
